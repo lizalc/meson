@@ -344,7 +344,7 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
             guess_gcc_or_lcc = 'lcc'
         if 'Microchip Technology' in out:
             # this output has "Free Software Foundation" in its version
-            guess_gcc_or_lcc = None
+            guess_gcc_or_lcc = 'gcc' if 'xc32' in compiler_name.lower() else None
 
         if guess_gcc_or_lcc:
             defines = _get_gnu_compiler_defines(compiler, lang)
