@@ -377,6 +377,12 @@ class MachineInfo(HoldableObject):
         """Machine is IRIX?"""
         return self.system.startswith('irix')
 
+    def is_bare_metal(self) -> bool:
+        """
+        Machine is bare metal (no OS)?
+        """
+        return self.system == 'baremetal'
+
     # Various prefixes and suffixes for import libraries, shared libraries,
     # static libraries, and executables.
     # Versioning is added to these names in the backends as-needed.
