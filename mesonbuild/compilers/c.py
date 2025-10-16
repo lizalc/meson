@@ -16,6 +16,7 @@ from .mixins.apple import AppleCompilerMixin, AppleCStdsMixin
 from .mixins.clike import CLikeCompiler
 from .mixins.ccrx import CcrxCompiler
 from .mixins.xc16 import Xc16Compiler
+from .mixins.xc32 import Xc32Compiler
 from .mixins.compcert import CompCertCompiler
 from .mixins.ti import TICompiler
 from .mixins.arm import ArmCompiler, ArmclangCompiler
@@ -642,6 +643,20 @@ class Xc16CCompiler(Xc16Compiler, CCompiler):
         if path == '':
             path = '.'
         return ['-I' + path]
+
+
+class Xc32CCompiler(Xc32Compiler, GnuCCompiler):
+
+    """Microchip XC32 C compiler. GCC based with some options disabled."""
+
+    def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
+                 is_cross: bool, info: 'MachineInfo',
+                 linker: T.Optional['DynamicLinker'] = None,
+                 full_version: T.Optional[str] = None):
+        GnuCCompiler.__init__(self, ccache, exelist, version, for_machine, is_cross,
+                              info, linker=linker, full_version=full_version)
+        Xc32Compiler.__init__(self)
+
 
 class CompCertCCompiler(CompCertCompiler, CCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,

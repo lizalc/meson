@@ -342,7 +342,7 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
             guess_gcc_or_lcc = 'gcc'
         if 'e2k' in out and 'lcc' in out:
             guess_gcc_or_lcc = 'lcc'
-        if 'Microchip Technology' in out:
+        if 'Microchip Technology' in out or 'Microchip XC32 Compiler' in out:
             # this output has "Free Software Foundation" in its version
             guess_gcc_or_lcc = None
 
@@ -566,10 +566,15 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
                 ccache, compiler, version, for_machine, is_cross, info,
                 full_version=full_version, linker=linker)
 
-        if 'Microchip Technology' in out:
-            cls = c.Xc16CCompiler
-            env.add_lang_args(cls.language, cls, for_machine)
-            linker = linkers.Xc16DynamicLinker(for_machine, version=version)
+        if 'Microchip Technology' in out or 'Microchip XC32 Compiler' in out:
+            if 'XC32' in out:
+                cls = c.Xc32CCompiler if lang == 'c' else cpp.Xc32CPPCompiler
+                linker = guess_nix_linker(env, compiler, cls, version, for_machine)
+            else:
+                cls = c.Xc16CCompiler
+                env.add_lang_args(cls.language, cls, for_machine)
+                linker = linkers.Xc16DynamicLinker(for_machine, version=version)
+
             return cls(
                 ccache, compiler, version, for_machine, is_cross, info,
                 full_version=full_version, linker=linker)

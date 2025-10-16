@@ -190,6 +190,10 @@ def guess_nix_linker(env: 'Environment', compiler: T.List[str], comp_class: T.Ty
             v = search_version(o)
 
         linker = linkers.LLVMDynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
+    elif 'XC32 Compiler' in o or 'XC32 Compiler' in e:
+        # Output has 'GNU' in it. 'XC32 Compiler' is valid across most (all?) versions while 'Microchip XC32 Compiler'
+        # or 'Microchip Technology' is not.
+        linker = linkers.Xc32DynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
     elif 'GNU' in o or 'GNU' in e:
         gnu_cls: T.Type[GnuDynamicLinker]
         # this is always the only thing on stdout, except for swift

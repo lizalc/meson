@@ -1112,6 +1112,26 @@ class Xc16DynamicLinker(DynamicLinker):
                          target: BuildTarget, extra_paths: T.Optional[T.List[str]] = None) -> T.Tuple[T.List[str], T.Set[bytes]]:
         return ([], set())
 
+
+class Xc32DynamicLinker(GnuDynamicLinker):
+
+    """Linker for Microchip XC32 compiler."""
+
+    id = 'xc32-ld'
+
+    def sanitizer_args(self, value: T.List[str]) -> T.List[str]:
+        return []
+
+    def get_coverage_args(self) -> T.List[str]:
+        return []
+
+    def get_pie_args(self) -> T.List[str]:
+        return []
+
+    def thread_flags(self, env: Environment) -> T.List[str]:
+        return []
+
+
 class CompCertDynamicLinker(DynamicLinker):
 
     """Linker for CompCert C compiler."""
