@@ -342,7 +342,7 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
             guess_gcc_or_lcc = 'gcc'
         if 'e2k' in out and 'lcc' in out:
             guess_gcc_or_lcc = 'lcc'
-        if 'Microchip Technology' in out:
+        if 'Microchip' in out:
             # this output has "Free Software Foundation" in its version
             guess_gcc_or_lcc = None
 
@@ -508,7 +508,9 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
                 if version != 'unknown version':
                     break
             else:
-                raise EnvironmentException(f'Failed to detect MSVC compiler version: stderr was\n{err!r}')
+                raise EnvironmentException(
+                    f"Failed to detect MSVC compiler version: stderr was\n{err!r}"
+                )
             cl_signature = lookat.split('\n', maxsplit=1)[0]
             match = re.search(r'.*(x86|x64|ARM|ARM64)([^_A-Za-z0-9]|$)', cl_signature)
             if match:
@@ -566,10 +568,19 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
                 ccache, compiler, version, for_machine, is_cross, info,
                 full_version=full_version, linker=linker)
 
-        if 'Microchip Technology' in out:
-            cls = c.Xc16CCompiler
-            env.add_lang_args(cls.language, cls, for_machine)
-            linker = linkers.Xc16DynamicLinker(for_machine, version=version)
+        if 'Microchip' in out:
+            if 'XC32' in out:
+                cls = c.Xc32CCompiler
+                env.add_lang_args(cls.language, cls, for_machine)
+                version = search_version(out[out.find(")"):])
+                linker = linkers.GnuBFDDynamicLinker(
+                    compiler, for_machine, prefix_arg=cls.LINKER_PREFIX,
+                    always_args=[], system=env.machines[for_machine].system, version=version)
+            else:
+                cls = c.Xc16CCompiler
+                env.add_lang_args(cls.language, cls, for_machine)
+                linker = linkers.Xc16DynamicLinker(for_machine, version=version)
+
             return cls(
                 ccache, compiler, version, for_machine, is_cross, info,
                 full_version=full_version, linker=linker)

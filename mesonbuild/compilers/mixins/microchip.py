@@ -3,17 +3,19 @@
 
 from __future__ import annotations
 
-"""Representations specific to the Microchip XC16 C compiler family."""
+"""Representations specific to the Microchip XC C/C++ compiler family."""
 
 import os
 import typing as T
 
 from ...mesonlib import EnvironmentException
+from ...options import UserStdOption
 
 if T.TYPE_CHECKING:
     from ...envconfig import MachineInfo
     from ...environment import Environment
-    from ...compilers.compilers import Compiler
+    from ...options import MutableKeyedOptionDictType
+    from ..compilers import Compiler
 else:
     # This is a bit clever, for mypy we pretend that these mixins descend from
     # Compiler, so we get all of the methods and attributes defined for us, but
@@ -21,7 +23,7 @@ else:
     # do). This gives up DRYer type checking, with no runtime impact
     Compiler = object
 
-xc16_optimization_args: T.Dict[str, T.List[str]] = {
+xc_optimization_args: T.Dict[str, T.List[str]] = {
     'plain': [],
     '0': ['-O0'],
     'g': ['-O0'],
@@ -31,9 +33,9 @@ xc16_optimization_args: T.Dict[str, T.List[str]] = {
     's': ['-Os']
 }
 
-xc16_debug_args: T.Dict[bool, T.List[str]] = {
+xc_debug_args: T.Dict[bool, T.List[str]] = {
     False: [],
-    True: []
+    True: ['-g']
 }
 
 
@@ -81,10 +83,10 @@ class Xc16Compiler(Compiler):
         return ['--nostdlib']
 
     def get_optimization_args(self, optimization_level: str) -> T.List[str]:
-        return xc16_optimization_args[optimization_level]
+        return xc_optimization_args[optimization_level]
 
     def get_debug_args(self, is_debug: bool) -> T.List[str]:
-        return xc16_debug_args[is_debug]
+        return xc_debug_args[is_debug]
 
     @classmethod
     def _unix_args_to_native(cls, args: T.List[str], info: MachineInfo) -> T.List[str]:
@@ -107,5 +109,42 @@ class Xc16Compiler(Compiler):
         for idx, i in enumerate(parameter_list):
             if i[:9] == '-I':
                 parameter_list[idx] = i[:9] + os.path.normpath(os.path.join(build_dir, i[9:]))
+
+        return parameter_list
+
+class Xc32Compiler(Compiler):
+
+    id = 'xc32'
+    LINKER_PREFIX = '-Wl,'
+
+    def __init__(self) -> None:
+        if not self.is_cross:
+            raise EnvironmentException('xc32 supports only cross-compilation.')
+        # Assembly
+        self.can_compile_suffixes.add('s')
+        self.can_compile_suffixes.add('sx')
+        default_warn_args: T.List[str] = []
+        self.warn_args = {'0': [],
+                          '1': default_warn_args,
+                          '2': default_warn_args + [],
+                          '3': default_warn_args + [],
+                          'everything': default_warn_args + []}
+
+    def get_optimization_args(self, optimization_level: str) -> T.List[str]:
+        return xc_optimization_args[optimization_level]
+
+    def get_options(self) -> MutableKeyedOptionDictType:
+        opts = super().get_options()
+        stds = ["c89", "c99"]
+        key = self.form_compileropt_key("std")
+        std_opt = opts[key]
+        assert isinstance(std_opt, UserStdOption), "for mypy"
+        std_opt.set_versions(stds, gnu=True)
+        return opts
+
+    def compute_parameters_with_absolute_paths(self, parameter_list: T.List[str], build_dir: str) -> T.List[str]:
+        for idx, i in enumerate(parameter_list):
+            if i[:2] == '-I' or i[:2] == '-L':
+                parameter_list[idx] = i[:2] + os.path.normpath(os.path.join(build_dir, i[2:]))
 
         return parameter_list
