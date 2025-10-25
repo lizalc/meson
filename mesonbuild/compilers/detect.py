@@ -228,6 +228,8 @@ def detect_static_linker(env: 'Environment', compiler: Compiler) -> StaticLinker
             return linkers.CcrxLinker(linker)
         if out.startswith('GNU ar') and 'xc16-ar' in linker_name:
             return linkers.Xc16Linker(linker)
+        if out.startswith('GNU ar') and 'xc32-ar' in linker_name:
+            return linkers.Xc32ArLinker(compiler.for_machine, linker)
         if 'Texas Instruments Incorporated' in out:
             if 'ar2000' in linker_name:
                 return linkers.C2000Linker(linker)
@@ -342,7 +344,7 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
             guess_gcc_or_lcc = 'gcc'
         if 'e2k' in out and 'lcc' in out:
             guess_gcc_or_lcc = 'lcc'
-        if 'Microchip Technology' in out:
+        if 'Microchip' in out:
             # this output has "Free Software Foundation" in its version
             guess_gcc_or_lcc = None
 
@@ -508,7 +510,9 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
                 if version != 'unknown version':
                     break
             else:
-                raise EnvironmentException(f'Failed to detect MSVC compiler version: stderr was\n{err!r}')
+                raise EnvironmentException(
+                    f"Failed to detect MSVC compiler version: stderr was\n{err!r}"
+                )
             cl_signature = lookat.split('\n', maxsplit=1)[0]
             match = re.search(r'.*(x86|x64|ARM|ARM64)([^_A-Za-z0-9]|$)', cl_signature)
             if match:
@@ -566,13 +570,34 @@ def _detect_c_or_cpp_compiler(env: 'Environment', lang: str, for_machine: Machin
                 ccache, compiler, version, for_machine, is_cross, info,
                 full_version=full_version, linker=linker)
 
-        if 'Microchip Technology' in out:
-            cls = c.Xc16CCompiler
-            env.add_lang_args(cls.language, cls, for_machine)
-            linker = linkers.Xc16DynamicLinker(for_machine, version=version)
-            return cls(
-                ccache, compiler, version, for_machine, is_cross, info,
-                full_version=full_version, linker=linker)
+        if 'Microchip' in out:
+            if 'XC32' in out:
+                # XC32 versions always have the form 'vMAJOR.MINOR'
+                match = re.search(r'XC32.*v(\d+\.\d+)', out)
+                if match:
+                    version = match.group(1)
+                else:
+                    raise EnvironmentException(f'Failed to detect XC32 compiler version: full version was\n{full_version}')
+
+                cls = c.Xc32CCompiler if lang == 'c' else cpp.Xc32CPPCompiler
+                defines = _get_gnu_compiler_defines(compiler, lang)
+                cls.gcc_version = _get_gnu_version_from_defines(defines)
+
+                env.add_lang_args(cls.language, cls, for_machine)
+                linker = linkers.Xc32DynamicLinker(compiler, for_machine, cls.LINKER_PREFIX, [], version=version)
+
+                return cls(
+                    ccache, compiler, version, for_machine, is_cross,
+                    info, defines=defines, full_version=full_version,
+                    linker=linker)
+            else:
+                cls = c.Xc16CCompiler
+                env.add_lang_args(cls.language, cls, for_machine)
+                linker = linkers.Xc16DynamicLinker(for_machine, version=version)
+
+                return cls(
+                    ccache, compiler, version, for_machine, is_cross, info,
+                    full_version=full_version, linker=linker)
 
         if 'CompCert' in out:
             cls = c.CompCertCCompiler
